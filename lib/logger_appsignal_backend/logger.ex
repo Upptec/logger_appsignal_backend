@@ -2,6 +2,8 @@ defmodule LoggerAppsignalBackend.Logger do
   @moduledoc false
 
   @default_format "$message"
+  @standard_metadata  [:module, :function, :file, :line]
+  @all_metadata       [:pid | @standard_metadata]
 
   @behaviour :gen_event
 
@@ -64,7 +66,7 @@ defmodule LoggerAppsignalBackend.Logger do
   defp init(config, state) do
     device = Keyword.get(config, :device, :user)
     format = Logger.Formatter.compile(Keyword.get(config, :format, @default_format))
-    metadata = Keyword.get(config, :metadata, [:module, :function, :file, :line]) |> configure_metadata()
+    metadata = Keyword.get(config, :metadata, @standard_metadata) |> configure_metadata()
 
     %{
       state
