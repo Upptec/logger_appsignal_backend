@@ -99,7 +99,7 @@ defmodule LoggerAppsignalBackend.Logger do
 
     tags = md |> extract_extra_tags()
     trans_fun = fn(transaction) ->
-      Appsignal.Transaction.set_sample_data(transaction, "tags", tags)
+      Appsignal.Transaction.set_sample_data(transaction, "session_data", tags)
     end
     namespace = Keyword.get(md, :namespace, :background)
     stacktrace = get_stacktrace(md)
