@@ -88,12 +88,17 @@ defmodule LoggerAppsignalBackend.Logger do
 
   defp log_event(level, msg, ts, md, state) do
     %{metadata: keys} = state
-    output = format_event(level, msg, ts, md, state) |> List.to_string()
-    fixed_metadata = take_metadata(md, keys) |> Map.new()
+    output = format_event(level, msg, ts, md, state)
+    |> List.to_string()
+    |> remove_pid()
+
     namespace = Keyword.get(md, :namespace, :background)
     stacktrace = get_stacktrace(md)
     # https://github.com/appsignal/appsignal-elixir/blob/develop/lib/appsignal.ex
-    Appsignal.send_error(msg, output, stacktrace, fixed_metadata, nil, fn(transaction) -> transaction end, namespace)
+    msg
+    |> remove_pid()
+    |> Appsignal.send_error(output, stacktrace, metadata_to_send, nil, trans_fun, namespace)
+
     state
   end
 
@@ -123,5 +128,11 @@ defmodule LoggerAppsignalBackend.Logger do
     end
   end
   defp get_stacktrace(_), do: nil
+
+  defp remove_pid(msg) when is_binary(msg) do
+    r = ~r/#PID<\d+\.\d+\.\d+>/
+    String.replace(msg, r, "#PID<removed>")
+  end
+  defp remove_pid(msg), do: msg
 
 end
