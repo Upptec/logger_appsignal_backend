@@ -92,6 +92,15 @@ defmodule LoggerAppsignalBackend.Logger do
     |> List.to_string()
     |> remove_pid()
 
+    metadata_to_send =
+      md
+      |> take_metadata(keys)
+      |> Map.new()
+
+    tags = md |> extract_extra_tags()
+    trans_fun = fn(transaction) ->
+      Appsignal.Transaction.set_sample_data(transaction, "tags", tags)
+    end
     namespace = Keyword.get(md, :namespace, :background)
     stacktrace = get_stacktrace(md)
     # https://github.com/appsignal/appsignal-elixir/blob/develop/lib/appsignal.ex
@@ -135,4 +144,22 @@ defmodule LoggerAppsignalBackend.Logger do
   end
   defp remove_pid(msg), do: msg
 
+  defp extract_extra_tags(md) when is_list(md) do
+    md
+    |> Map.new
+    |> Map.drop(@all_metadata)
+    |> Map.drop([:namespace])
+    |> clean_extra_tags()
+  end
+  defp extract_extra_tags(%{} = sample), do: sample |> clean_extra_tags()
+  defp extract_extra_tags(_), do: %{}
+
+  defp clean_extra_tags(metadata) do
+    metadata
+    |> Enum.reduce(Map.new(), &clean_extra_tags/2)
+  end
+  defp clean_extra_tags({key, value}, acc) when (is_binary(value) or is_number(value) or is_atom(value)) and (is_atom(key) or is_binary(key)) do
+    Map.put(acc, key, value)
+  end
+  defp clean_extra_tags(_,acc), do: acc
 end
