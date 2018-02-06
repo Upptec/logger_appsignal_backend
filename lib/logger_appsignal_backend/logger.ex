@@ -105,11 +105,18 @@ defmodule LoggerAppsignalBackend.Logger do
     stacktrace = get_stacktrace(md)
     # https://github.com/appsignal/appsignal-elixir/blob/develop/lib/appsignal.ex
     msg
+    |> format_header()
     |> remove_pid()
     |> Appsignal.send_error(output, stacktrace, metadata_to_send, nil, trans_fun, namespace)
 
     state
   end
+
+  defp format_header([ head | _]), do: format_header(head)
+  defp format_header(msg) when is_binary(msg), do: msg
+  defp format_header(msg) when is_atom(msg), do: Atom.to_string(msg)
+  defp format_header(msg) when is_number(msg), do: "#{msg}"
+  defp format_header(_), do: "Unknown error"
 
   defp format_event(level, msg, ts, md, state) do
     %{format: format, metadata: keys} = state
@@ -140,7 +147,7 @@ defmodule LoggerAppsignalBackend.Logger do
 
   defp remove_pid(msg) when is_binary(msg) do
     r = ~r/#PID<\d+\.\d+\.\d+>/
-    String.replace(msg, r, "#PID<removed>")
+    String.replace(msg, r, "#PID<...>")
   end
   defp remove_pid(msg), do: msg
 
