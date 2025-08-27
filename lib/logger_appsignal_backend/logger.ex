@@ -2,8 +2,8 @@ defmodule LoggerAppsignalBackend.Logger do
   @moduledoc false
 
   @default_format "$message"
-  @standard_metadata  [:module, :function, :file, :line]
-  @all_metadata       [:pid | @standard_metadata]
+  @standard_metadata [:module, :function, :file, :line]
+  @all_metadata [:pid | @standard_metadata]
 
   @behaviour :gen_event
 
@@ -88,9 +88,11 @@ defmodule LoggerAppsignalBackend.Logger do
 
   defp log_event(level, msg, ts, md, state) do
     %{metadata: keys} = state
-    output = format_event(level, msg, ts, md, state)
-    |> List.to_string()
-    |> remove_pid()
+
+    output =
+      format_event(level, msg, ts, md, state)
+      |> List.to_string()
+      |> remove_pid()
 
     metadata_to_send =
       md
@@ -98,9 +100,11 @@ defmodule LoggerAppsignalBackend.Logger do
       |> Map.new()
 
     tags = md |> extract_extra_tags()
-    trans_fun = fn(transaction) ->
+
+    trans_fun = fn transaction ->
       Appsignal.Transaction.set_sample_data(transaction, "session_data", tags)
     end
+
     namespace = Keyword.get(md, :namespace, :background)
     stacktrace = get_stacktrace(md)
     # https://github.com/appsignal/appsignal-elixir/blob/develop/lib/appsignal.ex
@@ -112,7 +116,7 @@ defmodule LoggerAppsignalBackend.Logger do
     state
   end
 
-  defp format_header([ head | _]), do: format_header(head)
+  defp format_header([head | _]), do: format_header(head)
   defp format_header(msg) when is_binary(msg), do: msg
   defp format_header(msg) when is_atom(msg), do: Atom.to_string(msg)
   defp format_header(msg) when is_number(msg), do: "#{msg}"
@@ -137,27 +141,31 @@ defmodule LoggerAppsignalBackend.Logger do
   end
 
   defp get_stacktrace(md) when is_list(md), do: get_stacktrace(Map.new(md))
+
   defp get_stacktrace(%{pid: pid}) do
     case Process.info(pid, :current_stacktrace) do
       {_, stacktrace} -> stacktrace
       _ -> nil
     end
   end
+
   defp get_stacktrace(_), do: nil
 
   defp remove_pid(msg) when is_binary(msg) do
     r = ~r/#PID<\d+\.\d+\.\d+>/
     String.replace(msg, r, "#PID<...>")
   end
+
   defp remove_pid(msg), do: msg
 
   defp extract_extra_tags(md) when is_list(md) do
     md
-    |> Map.new
+    |> Map.new()
     |> Map.drop(@all_metadata)
     |> Map.drop([:namespace])
     |> clean_extra_tags()
   end
+
   defp extract_extra_tags(%{} = sample), do: sample |> clean_extra_tags()
   defp extract_extra_tags(_), do: %{}
 
@@ -165,8 +173,12 @@ defmodule LoggerAppsignalBackend.Logger do
     metadata
     |> Enum.reduce(Map.new(), &clean_extra_tags/2)
   end
-  defp clean_extra_tags({key, value}, acc) when (is_binary(value) or is_number(value) or is_atom(value)) and (is_atom(key) or is_binary(key)) do
+
+  defp clean_extra_tags({key, value}, acc)
+       when (is_binary(value) or is_number(value) or is_atom(value)) and
+              (is_atom(key) or is_binary(key)) do
     Map.put(acc, key, value)
   end
-  defp clean_extra_tags(_,acc), do: acc
+
+  defp clean_extra_tags(_, acc), do: acc
 end
